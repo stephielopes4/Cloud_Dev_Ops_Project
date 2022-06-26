@@ -60,8 +60,9 @@ the Lambda is invoked for subsequent operations.
 	1) ServerSecurityGroup--------of type "AWS::EC2::SecurityGroup is created with both inbound and outbound rules for VPCId mentioned above
 	
 	2)AnomalyDetectionServer-------This server takes the instance type parameter, keyname parameter, subnetid parameter. The reference for above 
-	security group is given for network interface. Also, for ImageId, the function Find In Map:: is used which referes to the Mapping given above and correctly 	    takes the ami id for ubuntu server. Once the server is create through CloudFormation, then on this server code deploy agent is installed.
-	This agent installs the source code(raw_data.py) , appspec.yml and scripts on the server. Using the scripts the raw_data.py is executed and data push to 	 kinesis stream begins. 
+	security group is given for network interface. Also, for ImageId, the function Find In Map:: is used which referes to the Mapping given above 
+	and correctly takes the ami id for ubuntu server. Once the server is create through CloudFormation, then on this server code deploy agent is installed. This 	     agent installs the source code(raw_data.py) , appspec.yml and scripts on the server. Using the scripts the raw_data.py is executed and data push to
+	kinesis stream begins. 
 	
 	3)KinesisDataStream--------of type AWS::Kinesis::Stream is created for streaming of raw temperature data.
 	
@@ -69,7 +70,8 @@ the Lambda is invoked for subsequent operations.
 	
 	5)SNSTopic------of type AWS::SNS::Topic is created to create a topic to subscribe
 	
-	6)MySubscription-----of type AWS::SNS::Subscription is created with protocol as email to ask the subscriber to subscribe to the above topic to get the email-  			notification.
+	6)MySubscription-----of type AWS::SNS::Subscription is created with protocol as email to ask the subscriber to subscribe to the above 
+		topic to get the email- notification.
 	
 	7) S3Bucket------of type AWS::S3::Bucket is created for storing the deployment package(.zip file for source code and appspec.yml)
 	
@@ -80,7 +82,7 @@ the Lambda is invoked for subsequent operations.
 	from command line by navigating to the project directory. Here, lambda_deployment_package.zip file is created and anomaly_detection.py file which contains
 	lambda_handler, is added at the root of this zip file. The S3 Bucket by name lambda-deploymentpackage-bucket is seperately created in which this
 	lambda_deployment_package.zip is already uploaded. In the "Code" property of AWS::Lambda::Function, the "S3bucket" name--lambda-deploymentpackage-bucket
-	and the "S3key"---lambda_deployment_package.zip is given for the lambda function to deploy the anomaly_detection.py code and access 			        	anomaly_detection.lambda_handler method for handler.	   
+	and the "S3key"---lambda_deployment_package.zip is given for the lambda function to deploy the anomaly_detection.py code and access  	       			anomaly_detection.lambda_handler method for handler.	   
 			
 	10)OUTPUTS:
 	          outputs for following resources are given-----
