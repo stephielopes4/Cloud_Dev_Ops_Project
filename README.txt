@@ -6,9 +6,8 @@ The temperature data of a thing(device) 'DHT-001' is streamed through Kinesis da
 AWS Lambda function is triggered by the kinesis data. This function detects the temperature anomalies(any temperature below 96 is cold temperature and
 any temperature above 101 is fever/hot temperature) and stores the anomaly data records in DynamoDB table and sends the notification through SNS service 
 via email to the subscriber. All the resources are provisioned through a template(JSON template) with parameters and this template is uploaded on CloudFormation
-to create a stack. CodeDeploy deploys the application revision file(archive .zip file) containing appspec.yml file, scripts folder and service folder containing script to push
-the data on kinesis stream. CodeDeploy deploys the application revision file on Ubuntu server. Once the data streaming begins, the Lambda is invoked for subsequent
-operations.
+to create a stack. CodeDeploy deploys the application revision file(archive .zip file) containing appspec.yml file, scripts folder and service folder containing script to push the data on kinesis stream. CodeDeploy deploys the application revision file on Ubuntu server. Once the data streaming begins, the Lambda is invoked for subsequent operations.
+
 
 ##Components:
 	AWS Services  - CloudFormation, CodeDeploy
@@ -43,35 +42,40 @@ operations.
 
 ### FILES ###:
 1) Cloud_Formation.json:
-             This file first creates an Ubuntu server 18.04 LTS in region us-east-1 with resource as AWS::EC2::Instance and the name of the server is AnomalyDetectionServer.
+             This file first creates an Ubuntu server 18.04 LTS in region us-east-1 with resource as AWS::EC2::Instance and the name of the server is 			     AnomalyDetectionServer.
              The parameters are first created for KeyName, InstanceType, VPCId and SUBNETId and allowed values are given inside a list.
-	 PARAMETERS AS FOLLOWS:
+	     PARAMETERS AS FOLLOWS:
 		KeyName-----gives all the available or created key pairs in the drop down list, any key can be chosen for ec2 server.
 		InstanceType---------available instance types for my account are given in drop down list to choose from
 		VPCId -------default vpc id for my account is given
 		SUBNETId------for above VPC,  6 subnets are available to choose from
 	MAPPINGS:
-		Mappings is created to map the instance type with architecture for eg. t2.micro maps to HVM64 architecture. This architecture further maps with the region
-		us-east-1 with correct ami id for the ubuntu server. We can thus create for any region the required instances. For my account US-East-1 region is mandatory.
+		Mappings is created to map the instance type with architecture for eg. t2.micro maps to HVM64 architecture. This architecture further maps with the                     region us-east-1 with correct ami id for the ubuntu server. We can thus create for any region the required instances. For my account US-East-1 region 		      is mandatory.
+		 
 	RESOURCES:
 	1) ServerSecurityGroup--------of type "AWS::EC2::SecurityGroup is created with both inbound and outbound rules for VPCId mentioned above
-	2)AnomalyDetectionServer-------This server takes the instance type parameter, keyname parameter, subnetid parameter. The reference for above security group is given
-			for network interface. Also, for ImageId, the function Find In Map:: is used which referes to the Mapping given above and correctly takes the ami id 
-			for ubuntu server. Once the server is create through CloudFormation, then on this server code deploy agent is installed. This agent installs the 
-			source code(raw_data.py) , appspec.yml and scripts on the server. Using the scripts the raw_data.py is executed and data push to kinesis stream begins.
+	
+	2)AnomalyDetectionServer-------This server takes the instance type parameter, keyname parameter, subnetid parameter. The reference for above security group is 			given for network interface. Also, for ImageId, the function Find In Map:: is used which referes to the Mapping given above and correctly takes the 
+		 ami id for ubuntu server. Once the server is create through CloudFormation, then on this server code deploy agent is installed. This agent installs  
+		 the source code(raw_data.py) , appspec.yml and scripts on the server. Using the scripts the raw_data.py is executed and data push to kinesis stream  
+		 begins.
 
+	
 	3)KinesisDataStream--------of type AWS::Kinesis::Stream is created for streaming of raw temperature data.
+	
 	4)DynamoDBTable-------of type AWS::DynamoDB::Table  is created to store the anomaly data
+	
 	5)SNSTopic------of type AWS::SNS::Topic is created to create a topic to subscribe
-	6)MySubscription-----of type AWS::SNS::Subscription is created with protocol as email to ask the subscriber to subscribe to the above topic to get the email-notification.
+	
+	6)MySubscription-----of type AWS::SNS::Subscription is created with protocol as email to ask the subscriber to subscribe to the above topic to get the email-  			notification.
+	
 	7) S3Bucket------of type AWS::S3::Bucket is created for storing the deployment package(.zip file for source code and appspec.yml)
+	
 	8)KinesisEventSourceMap-------of type AWS::Lambda::EventSourceMapping is created for a trigger(kinesis data stream) for lambda function
-	9)AnomalyLambdaFunction------of type AWS::Lambda::Function is created for lambda_handler. This function takes .zip package. The lambda execution role is created and arn
-		is given to Role property. The code for the function will be uploaded from local machine as .zip file. This code is deployed from command line by navigating to the
-		project directory. Here, lambda_deployment_package.zip file is created and anomaly_detection.py file which contains lambda_handler is added at the root of this 
-		zip file. The S3 Bucket by name lambda-deploymentpackage-bucket is seperately created in which this lambda_deployment_package.zip is already uploaded. In the
-		"Code" property of AWS::Lambda::Function, the "S3bucket" name--lambda-deploymentpackage-bucket and the "S3key"---lambda_deployment_package.zip is
-		given for the lambda function to deploy the anomaly_detection.py code and access  anomaly_detection.lambda_handler method for handler.
+	
+	9)AnomalyLambdaFunction------of type AWS::Lambda::Function is created for lambda_handler. This function takes .zip package. The lambda execution role is 		created and arn is given to Role property. The code for the function will be uploaded from local machine as .zip file. This code is deployed from 		       command line by navigating to the project directory. Here, lambda_deployment_package.zip file is created and anomaly_detection.py file which contains 		    lambda_handler is added at the root of this zip file. The S3 Bucket by name lambda-deploymentpackage-bucket is seperately created in which this
+	       lambda_deployment_package.zip is already uploaded. In the "Code" property of AWS::Lambda::Function, the "S3bucket" name--lambda-deploymentpackage-bucket
+	       and the "S3key"---lambda_deployment_package.zip is given for the lambda function to deploy the anomaly_detection.py code and access 			       anomaly_detection.lambda_handler method for handler.	   
 			
 	10)OUTPUTS:
 	          outputs for following resources are given-----
@@ -84,7 +88,7 @@ operations.
 		7.FunctionName---------the name of lambda function for AnomalyLambdaFunction
 
 2)lambda_deployment_package.zip-------this is a zip file containing anomaly_detection.py(which has lambda_handler) which is uploaded in S3 bucket and the bucket name
-				and s3key which is .zip package is given to the lambda resource.
+				      and s3key which is .zip package is given to the lambda resource.
 
 3)m03p02_codedeploy.zip-----------this file contains the code deployment package,  a .zip archive file. There are 3 folders in this zip file.
 	a) service folder-------this folder contains raw_data.py file which is a source code used to push the data on kinesis stream.
