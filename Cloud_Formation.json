@@ -1,0 +1,261 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Anomaly Detection Server, Kinesis data stream, Dynamodb, SNS & Lambda",
+    
+    "Parameters": {
+        
+        "KeyName": {
+            "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instance",
+            "Type": "AWS::EC2::KeyPair::KeyName",
+            "ConstraintDescription": "must be the name of an existing EC2 KeyPair"
+        },
+        "InstanceType": {
+            "Description": "Anomaly Detection Server, EC2 instance type",
+            "Type": "String",
+            "Default": "t2.micro",
+            "AllowedValues": ["t2.micro", "t3a.nano", "t3a.micro", "t3a.medium"],
+            "ConstraintDescription": "must be a valid EC2 instance type"
+        },
+        "VPCId": {
+            "Description": "Default VPC Id",
+            "Type": "AWS::EC2::VPC::Id",
+            "Default": "vpc-0c366ea818670934a"
+        },
+        "SUBNETId": {
+            "Description": "VPC Subnet Id",
+            "Type": "AWS::EC2::Subnet::Id",
+            "Default": "subnet-02f862aa679b80044",
+            "AllowedValues": ["subnet-02f862aa679b80044", "subnet-0476e2c88a23efaa6", "subnet-0fe41539240cbda6e",
+                                "subnet-011753636784c8176", "subnet-0eac0b7ebaeca4a1c", "subnet-0dd6c9a409d1d07df"]
+        }  
+    
+    },
+    
+    "Mappings": {
+        "AWSInstanceType2Arch":{
+            "t2.micro": {"Arch": "HVM64"},
+            "t3a.nano": {"Arch": "HVM64"  },
+            "t3a.micro": {"Arch": "HVM64" },
+            "t3a.medium": {"Arch": "HVM64"}
+        },
+        "AWSRegionArch2AMI":{
+            "us-east-1": {"HVM64":"ami-005de95e8ff495156"}        
+        }
+    
+    },
+    
+    "Resources": {
+        "ServerSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            
+            "Properties": {
+            	"SecurityGroupIngress" : [{
+         			"IpProtocol" : "tcp",
+         			"FromPort" : 80,
+         			"ToPort" : 80,
+         			"CidrIp" : "0.0.0.0/0"
+      			},
+      			{
+         			"IpProtocol" : "tcp",
+         			"FromPort" : 22,
+         			"ToPort" : 22,
+         			"CidrIp" : "0.0.0.0/0"
+      			}],
+                
+                "VpcId": {
+                    "Ref": "VPCId"
+                },
+                
+                "GroupDescription": "Allows HTTP and SSH",
+                
+                "Tags" : [ {"Key" : "Name", "Value" : "ServerSecurityGroup"} ]
+            }
+        },
+        
+        "AnomalyDetectionServer": {
+            "Type": "AWS::EC2::Instance",
+            
+            "Properties": {
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                
+                "ImageId": {
+                    "Fn::FindInMap":[ "AWSRegionArch2AMI", {"Ref":"AWS::Region"}, 
+                        {"Fn::FindInMap": ["AWSInstanceType2Arch", {"Ref": "InstanceType"}, "Arch" ] } ]              
+                },
+                
+                "NetworkInterfaces": [
+                    {
+                        "GroupSet": [
+                            {
+                                "Ref": "ServerSecurityGroup"
+                            }
+                        ],
+                        "AssociatePublicIpAddress": "true",
+                        "DeviceIndex": "0",
+                        "DeleteOnTermination": "true",
+                        "SubnetId": {
+                            "Ref": "SUBNETId"
+                        }
+                    }
+                ],
+                
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                
+                "Tags" : [ {"Key" : "Name", "Value" : "AnomalyDetectionServer"} ]
+            
+            }
+        },
+        
+        "KinesisDataStream":{
+            "Type" : "AWS::Kinesis::Stream",
+            "Properties": {
+                "Name": "m03p02_raw_data_stream",
+                "ShardCount": 2,
+                "Tags" : [ {"Key" : "Name", "Value" : "KinesisDataStream"} ]
+            }
+        },
+        
+        "DynamoDBTable" : {
+            "Type" : "AWS::DynamoDB::Table",
+            "Properties" : {
+                "AttributeDefinitions" : [
+                     {
+                        "AttributeName" : "deviceid",
+                        "AttributeType" : "S"
+                  }, 
+                  {
+                        "AttributeName" : "timestamp",
+                        "AttributeType" : "S"
+                  }
+                 ],
+                "KeySchema" : [
+                    {
+                      "AttributeName": "deviceid",
+                      "KeyType": "HASH"
+                  },
+                  {
+                      "AttributeName": "timestamp",
+                      "KeyType": "RANGE"
+                  }
+              ],
+                "TableName" : "m03p02_anomaly_data",
+                "Tags" : [ {"Key" : "Name", "Value" : "DynamoDBTable"} ],
+                "ProvisionedThroughput": {
+                  "ReadCapacityUnits": 5,
+                  "WriteCapacityUnits": 5
+                }
+            }
+        },
+        
+        "SNSTopic" : {
+            "Type" : "AWS::SNS::Topic",
+            "Properties" : {
+              "TopicName" : "m03p02_anomaly_alerts"
+            }
+        },
+        
+        "MySubscription" : {
+            "Type" : "AWS::SNS::Subscription",
+            "Properties" : {
+              "Endpoint" : "marystephie1@gmail.com",
+              "Protocol" : "email",
+              "TopicArn" : { "Ref" : "SNSTopic" }
+            }
+        },
+        
+        "S3Bucket": {
+            "Type": "AWS::S3::Bucket",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+                "BucketName": "m03p02databucket",
+                "Tags" : [ {"Key" : "Name", "Value" : "S3Bucket"} ]
+            }
+        },
+        
+        "KinesisEventSourceMap":{
+            "Type" : "AWS::Lambda::EventSourceMapping",
+            
+            "Properties" : {
+                "BatchSize" : 50,
+                "MaximumBatchingWindowInSeconds" : 30,
+                
+                "EventSourceArn" : {
+                    "Fn::GetAtt": [
+                        "KinesisDataStream",
+                        "Arn"
+                    ]
+                },
+                
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "AnomalyLambdaFunction",
+                        "Arn"
+                    ]
+                },
+                "StartingPosition": "LATEST"
+            }
+        },
+        
+        "AnomalyLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            
+            "Properties": {
+                "Description": "Detects anomalies. Stores them in dynamodb table & sends sns notification to subscriber",
+                
+                "FunctionName":"anomalydetection", 
+                
+                "PackageType": "Zip",       
+                
+                "Handler": "anomaly_detection.lambda_handler",
+                
+                "Role": "arn:aws:iam::929150012839:role/LambdaExecutionRole",
+                
+                "Code": {
+                    "S3Bucket":"lambda-deploymentpackage-bucket",
+                    "S3Key":"lambda_deployment_package.zip"      
+                },
+                
+                "Runtime": "python3.9",
+                
+                "Timeout": 59,
+                
+                "TracingConfig": {
+                    "Mode": "Active"
+                },
+                
+                "Tags" : [ {"Key" : "Name", "Value" : "AnomalyLambdaFunction"} ]
+            }
+        }
+    
+    },
+    
+    "Outputs": {
+        "InstanceId": {
+            "Value": {"Ref": "AnomalyDetectionServer"}
+        },
+        "Name": {
+            "Value": {"Ref": "KinesisDataStream"}
+        },
+        "TableName": {
+            "Value": {"Ref": "DynamoDBTable"}
+        },
+        "ARN": {
+            "Value": {"Ref": "SNSTopic"}
+        },
+        "ID":{
+            "Value": {"Ref": "MySubscription"}
+        },
+        "BucketName":{
+            "Value": {"Ref": "S3Bucket"}
+        },
+        "FunctionName":{
+            "Value": {"Ref": "AnomalyLambdaFunction"}
+        }
+
+    }   
+
+}
