@@ -6,7 +6,9 @@ The temperature data of a thing(device) 'DHT-001' is streamed through Kinesis da
 AWS Lambda function is triggered by the kinesis data. This function detects the temperature anomalies(any temperature below 96 is cold temperature and
 any temperature above 101 is fever/hot temperature) and stores the anomaly data records in DynamoDB table and sends the notification through SNS service 
 via email to the subscriber. All the resources are provisioned through a template(JSON template) with parameters and this template is uploaded on CloudFormation
-to create a stack. CodeDeploy deploys the application revision file(archive .zip file) containing appspec.yml file, scripts folder and service folder containing script to push the data on kinesis stream. CodeDeploy deploys the application revision file on Ubuntu server. Once the data streaming begins, the Lambda is invoked for subsequent operations.
+to create a stack. CodeDeploy deploys the application revision file(archive .zip file) containing appspec.yml file, scripts folder and service folder 
+containing script to push the data on kinesis stream. CodeDeploy deploys the application revision file on Ubuntu server. Once the data streaming begins, 
+the Lambda is invoked for subsequent operations.
 
 
 ##Components:
