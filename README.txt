@@ -44,7 +44,7 @@ the Lambda is invoked for subsequent operations.
 
 ### FILES ###:
 1) Cloud_Formation.json:
-             This file first creates an Ubuntu server 18.04 LTS in region us-east-1 with resource as AWS::EC2::Instance and the name of the server is 			     AnomalyDetectionServer.
+             This file first creates an Ubuntu server 18.04 LTS in region us-east-1 with resource as AWS::EC2::Instance and the name of the server is 			       AnomalyDetectionServer.
              The parameters are first created for KeyName, InstanceType, VPCId and SUBNETId and allowed values are given inside a list.
 	     PARAMETERS AS FOLLOWS:
 		KeyName-----gives all the available or created key pairs in the drop down list, any key can be chosen for ec2 server.
